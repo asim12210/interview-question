@@ -1,15 +1,16 @@
-from fastapi import FastAPI, HTTPException, Query, Path
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Query, Path, BackgroundTasks
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from datetime import datetime
 import sqlite3
 from typing import List, Optional
 import pdfkit
 from pdfkit.api import configuration
+from hkjc_crawler import get_db_connection, update_daily_data
 
 app = FastAPI()
+status = {"status": "idle"}
 
-DATABASE = 'racing_data.db'
 wkhtml_path = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 
 class RaceData(BaseModel):
@@ -27,11 +28,6 @@ class RaceData(BaseModel):
     沿途走位: str
     完成時間: str
     獨嬴賠率: float
-
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def convert_date_format(input_date: str) -> str:
     try:
@@ -51,7 +47,6 @@ def read_races():
 def read_races_by_date(date: str = Path(description='日期 YYYY-MM-DD'), race_no: int | None = Query(default=None, description='場次')):
     date = convert_date_format(date)
     conn = get_db_connection()
-    print(f'日期:{date}')
     if race_no is not None:
         races = conn.execute('SELECT * FROM races WHERE 日期 = ? AND 場次 = ?', (date, race_no)).fetchall()
     else:
@@ -86,10 +81,11 @@ def generate_pdf(races: List[dict], pdf_path: str):
                 border: 1px solid black;
                 padding: 8px;
                 text-align: left;
+                white-space: pre-wrap;
             }}
             th {{
                 background-color: #f2f2f2;
-                white-space: nowrap;
+                white-space: nowrap
             }}
         </style>
     </head>
@@ -165,7 +161,7 @@ def download_races():
     races_data = read_races()
     if not races_data:
         raise HTTPException(status_code=404, detail="No races data")
-    pdf_path = r"\racing_data.pdf"
+    pdf_path = r".\racing_data.pdf"
     pdf_name = "racing_data.pdf"
     generate_pdf(races_data, pdf_path)
     return FileResponse(pdf_path, media_type='application/pdf', filename=pdf_name)
@@ -175,8 +171,47 @@ def download_races_by_date(date: str, race_no: Optional[int] = Query(None)):
     races_data = read_races_by_date(date, race_no)
     if not races_data:
         raise HTTPException(status_code=404, detail="No races found for the given date and race number")
-    pdf_path = r"\racing_data.pdf"
+    pdf_path = r".\racing_data.pdf"
     pdf_name = f"racing_data_{date}.pdf" if race_no is None else f"racing_data_{date}_{race_no}.pdf"
     generate_pdf(races_data, pdf_path)
     return FileResponse(pdf_path, media_type='application/pdf', filename=pdf_name)
 
+def run_crawler():
+    global status
+    status["status"] = "running"
+    update_daily_data()
+    status["status"] = "finished"
+
+message_html = """
+        <html>
+            <head>
+                <title>hkjc crawling</title>
+            </head>
+            <body>
+                <h1>{message}</h1>
+            </body>
+            <script>
+                setInterval(function() {{
+                    location.reload();
+                }}, 10000);
+            </script>
+        </html>
+    """
+
+@app.get("/start-crawler")
+async def start_crawler(background_tasks: BackgroundTasks):
+    if status["status"] == "running":
+        return RedirectResponse("/status")
+    background_tasks.add_task(run_crawler)
+    html_content = message_html.format(message="Crawler started")
+    return HTMLResponse(content=html_content, status_code=200)
+
+@app.get("/status")
+async def get_crawler_status():
+    message1 = 'Crawler is already running' if status["status"] == "running" else "Crawler stop"
+    html_content = message_html.format(message=message1)
+    return HTMLResponse(content=html_content, status_code=200)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

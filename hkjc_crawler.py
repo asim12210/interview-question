@@ -6,7 +6,8 @@ import sqlite3
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE_URL = "https://racing.hkjc.com/racing/information/Chinese/Racing/LocalResults.aspx"
+BASE_URL = 'https://racing.hkjc.com/racing/information/Chinese/Racing/LocalResults.aspx'
+DATABASE = 'racing_data.db'
 
 def fetch_race_data(date, race_no):
     data = []
@@ -17,10 +18,20 @@ def fetch_race_data(date, race_no):
         
         race_table = soup.select_one('.table_bd')  # Find the first table in html
         if race_table:
+            header = race_table.find_all('tr')[1]
             rows = race_table.find_all('tr')[1:]  # Skip header
 
             for row in rows:
                 columns = row.find_all('td')
+                pos = ''
+                finish_time = '---'
+                win_odds = 0.0
+                if len(columns) == 12: # If race not established column[11] not exists
+                    pos         = columns[9].get_text(" ", strip=True) # keep space in string
+                    finish_time = columns[10].get_text(strip=True)
+                    win_odds    = float(columns[11].get_text(strip=True) if columns[11].get_text(strip=True) != '---' else '0.0') # If no data give 0.0  
+                else: 
+                    finish_time = columns[9].get_text(strip=True)
                 race_data = {
                     "日期": date,
                     "場次": str(race_no),
@@ -33,13 +44,15 @@ def fetch_race_data(date, race_no):
                     "實際負磅": int(columns[6].get_text(strip=True) if columns[6].get_text(strip=True) != '---' else '0'), # If no data give 0  
                     "檔位":    int(columns[7].get_text(strip=True) if columns[7].get_text(strip=True) != '---' else '0'), # If no data give 0  
                     "頭馬距離": columns[8].get_text(strip=True),
-                    "沿途走位": columns[9].get_text(" ", strip=True), # keep space in string
-                    "完成時間": columns[10].get_text(strip=True),
-                    "獨嬴賠率": float(columns[11].get_text(strip=True) if columns[11].get_text(strip=True) != '---' else '0.0') # If no data give 0.0  
+                    "沿途走位": str(pos),
+                    "完成時間": finish_time,
+                    "獨嬴賠率": win_odds
                 }
+                
                 data.append(race_data)
     except Exception as e:
-        print(f'error ==> date:{date}&race_no:{race_no} exception: {e}')
+        # print(f'error ==> date:{date}&race_no:{race_no} exception: {e}')
+        pass
     return data
 
 def fetch_all_races(conn):
@@ -50,8 +63,6 @@ def fetch_all_races(conn):
     for date in dates:
         if datetime.strptime(date, '%d/%m/%Y') > today: # If date grather then today, don't fetch
             continue
-        # if days > 2: # for testing
-        #     break
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = {}
             race_no = 1
@@ -70,8 +81,8 @@ def fetch_all_races(conn):
                     if race_data:
                         all_race_data.extend(race_data)
                 except Exception as e:
-                    print(f'error ==> date:{date}&race_no:{race_no} exception: {e}')
-        days += 1
+                    # print(f'error ==> date:{date}&race_no:{race_no} exception: {e}')
+                    pass
     return all_race_data
 
 def get_available_dates():
@@ -85,8 +96,13 @@ def save_to_json(data, filename='race_data.json'):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def save_to_sqlite(data, db_name='racing_data.db'):
-    conn = sqlite3.connect(db_name)
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def create_db():
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS races (
@@ -106,6 +122,13 @@ def save_to_sqlite(data, db_name='racing_data.db'):
             獨嬴賠率 REAL
         )
     ''')
+    conn.commit()
+    conn.close()
+
+def save_to_sqlite(data, db_name='racing_data.db'):
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    
     for race in data:
         c.execute('''
             INSERT INTO races VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -120,11 +143,9 @@ def is_fetched(date, race_no, conn):
     return c.fetchone() is not None
 
 def update_daily_data():
-    conn = sqlite3.connect('racing_data.db')
+    create_db()
+    conn = get_db_connection()
     all_race_data = fetch_all_races(conn)
-    save_to_json(all_race_data, filename='racing_data.json')
+    # save_to_json(all_race_data, filename='racing_data.json')
     save_to_sqlite(all_race_data, db_name='racing_data.db')
     conn.close()
-
-if __name__ == "__main__":
-    update_daily_data()
