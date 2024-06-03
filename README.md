@@ -9,7 +9,7 @@
 ## Requirements
 
 - Python 3.x
-- Required libraries: requests, BeautifulSoup4, fastapi, pydantic, pdfkit.
+- Required libraries: requests, BeautifulSoup4, fastapi, uvicorn, pydantic, pdfkit.
 - `wkhtmltopdf` for PDF generation
 
 ## Setup
