@@ -56,6 +56,7 @@ python main.py
 
 ### Using the API to get data
 For more detailed information, visit the documentation page: `http://localhost:8000/docs`.
+
 **Get all data**
 
  1. Endpoint: `/races`
