@@ -33,7 +33,7 @@ def fetch_race_data(date, race_no):
                 else: 
                     finish_time = columns[9].get_text(strip=True)
                 race_data = {
-                    "日期": date,
+                    "日期": convert_date_format(date),
                     "場次": str(race_no),
                     "名次": columns[0].get_text(strip=True),
                     "馬號": columns[1].get_text(strip=True),
@@ -59,7 +59,6 @@ def fetch_all_races(conn):
     all_race_data = []
     dates = get_available_dates()
     today = datetime.now()
-    days = 1
     for date in dates:
         if datetime.strptime(date, '%d/%m/%Y') > today: # If date grather then today, don't fetch
             continue
@@ -84,6 +83,10 @@ def fetch_all_races(conn):
                     # print(f'error ==> date:{date}&race_no:{race_no} exception: {e}')
                     pass
     return all_race_data
+
+def convert_date_format(input_date: str) -> str:
+    dt = datetime.strptime(input_date, '%d/%m/%Y')
+    return dt.strftime('%Y-%m-%d')
 
 def get_available_dates():
     response = requests.get(BASE_URL)

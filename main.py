@@ -32,7 +32,7 @@ class RaceData(BaseModel):
 def convert_date_format(input_date: str) -> str:
     try:
         dt = datetime.strptime(input_date, '%Y-%m-%d')
-        return dt.strftime('%d/%m/%Y')
+        pass
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
@@ -45,7 +45,7 @@ def read_races():
 
 @app.get("/races/{date}", response_model=List[RaceData], description="Dates must be in YYYY-MM-DD format.")
 def read_races_by_date(date: str = Path(description='日期 YYYY-MM-DD'), race_no: int | None = Query(default=None, description='場次')):
-    date = convert_date_format(date)
+    convert_date_format(date)
     conn = get_db_connection()
     if race_no is not None:
         races = conn.execute('SELECT * FROM races WHERE 日期 = ? AND 場次 = ?', (date, race_no)).fetchall()
@@ -60,13 +60,13 @@ def generate_pdf(races: List[dict], pdf_path: str):
     date = ''
     race_no = ''
     if races[0]['日期'] == races[-1]['日期']:
-        date = f"日期：{datetime.strptime(races[0]['日期'], '%d/%m/%Y').strftime('%Y-%m-%d')}"
+        date = f"日期：{races[0]['日期']}"
         if races[0]['場次'] == races[-1]['場次']:
             race_no = f"場次：{races[0]['場次']}"
         else:
             race_no = f"場次：{races[0]['場次']} - {races[-1]['場次']}"
     else:
-        date = f"日期：{datetime.strptime(races[0]['日期'], '%d/%m/%Y').strftime('%Y-%m-%d')} - {datetime.strptime(races[-1]['日期'], '%d/%m/%Y').strftime('%Y-%m-%d')}"
+        date = f"日期：{races[0]['日期']} - {races[-1]['日期']}"
     html_content = f'''
     <!DOCTYPE html>
     <html>
