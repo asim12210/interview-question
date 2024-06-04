@@ -87,7 +87,7 @@ For more detailed information, visit the documentation page: `http://localhost:8
  2. Method: GET
  3. Example:
 	 ``` bash
-	curl -X GET "http://localhost:8000/download/races"
+	curl -O "http://localhost:8000/download/races"
 	```
 
 **Download data in PDF by date (wkhtmltopdf is required)**
@@ -97,10 +97,10 @@ For more detailed information, visit the documentation page: `http://localhost:8
  4. Query Parameter: `race_no` (optional): Specify the race number to fetch data for a particular race on that day
  5. Example request with race number:
 	 ``` bash
-	curl -X GET "http://localhost:8000/download/races/2024-05-29?race_no=2"
+	curl -O "http://localhost:8000/download/races/2024-05-29?race_no=2"
 	```
 6. Example request without race number:
 	``` bash
-	curl -X GET "http://localhost:8000/download/races/2024-05-26"
+	curl -O "http://localhost:8000/download/races/2024-05-26"
 	```
 
