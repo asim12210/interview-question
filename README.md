@@ -10,7 +10,7 @@
 
 - Python 3.x
 - Required libraries: requests, BeautifulSoup4, fastapi, uvicorn, pydantic, pdfkit.
-- `wkhtmltopdf` for PDF generation
+- (optional) `wkhtmltopdf` for PDF generation
 
 ## Setup
 
@@ -39,9 +39,9 @@
 	wkhtml_path = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 	```
 	Replace `C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe` with the actual path to the `wkhtmltopdf` executable like the example below:
--   On Ubuntu: `/usr/local/bin/wkhtmltopdf`
--   On macOS (with Homebrew): `/usr/local/bin/wkhtmltopdf`
--   On Windows: `C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe`
+	-   On Ubuntu: `/usr/local/bin/wkhtmltopdf`
+	-   On macOS (with Homebrew): `/usr/local/bin/wkhtmltopdf`
+	-   Windows: `C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe`
 
 ## Usage
 ### Start web server
